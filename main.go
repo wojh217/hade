@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/wojh217/hade/framework/gin"
+	"github.com/wojh217/hade/provider/demo"
 	"log"
 	"net/http"
 	"os"
@@ -13,6 +14,9 @@ import (
 
 func main() {
 	engine := gin.Default()
+	// 注册服务提供者
+	engine.Bind(&demo.DemoServiceProvider{})
+
 	registerRouter(engine)
 
 	server := &http.Server{
