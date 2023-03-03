@@ -13,23 +13,26 @@ import (
 )
 
 type Context struct {
-	request *http.Request
+	request        *http.Request
 	responseWriter http.ResponseWriter
-	ctx context.Context
-	handler ControllerHandler
+	ctx            context.Context
 
+	// 是否超时标记位
 	hasTimeout bool
-	writerMux *sync.Mutex // 这里用指针？
+	// 写保护机制
+	writerMux  *sync.Mutex // 这里用指针？
 }
 
 func NewContext(r *http.Request, w http.ResponseWriter) *Context {
 	return &Context{
-		request: r,
+		request:        r,
 		responseWriter: w,
-		ctx: r.Context(),
-		writerMux: &sync.Mutex{},
+		ctx:            r.Context(),
+		writerMux:      &sync.Mutex{},
 	}
 }
+
+// #region base function
 
 func (ctx *Context) WriterMux() *sync.Mutex {
 	return ctx.writerMux
@@ -50,6 +53,8 @@ func (ctx *Context) SetHasTimeout() {
 func (ctx *Context) HasTimeout() bool {
 	return ctx.hasTimeout
 }
+
+// #endregion
 
 func (ctx *Context) BaseContext() context.Context {
 	return ctx.request.Context()
@@ -72,6 +77,9 @@ func (ctx *Context) Value(key interface{}) interface{} {
 	return ctx.BaseContext().Value(key)
 }
 
+// #endregion
+
+// #region query url
 func (ctx *Context) QueryInt(key string, def int) int {
 	params := ctx.QueryAll()
 	if vals, ok := params[key]; ok {
@@ -113,6 +121,9 @@ func (ctx *Context) QueryAll() map[string][]string {
 	return map[string][]string{}
 }
 
+// #endregion
+
+// #region form post
 func (ctx *Context) FormInt(key string, def int) int {
 	params := ctx.FormAll()
 	if vals, ok := params[key]; ok {
@@ -153,6 +164,10 @@ func (ctx *Context) FormAll() map[string][]string {
 	}
 	return map[string][]string{}
 }
+
+// #endregion
+
+// #region application/json post
 
 func (ctx *Context) BindJson(obj interface{}) error {
 	if ctx.request != nil {
@@ -198,3 +213,5 @@ func (ctx *Context) HTML(status int, obj interface{}, template string) error {
 func (ctx *Context) Text(status int, obj string) error {
 	return nil
 }
+
+// #endregion
