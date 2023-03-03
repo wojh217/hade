@@ -1,24 +1,16 @@
 package main
 
 import (
-	"fmt"
-	"webframework/framework"
+	"github.com/wojh217/hade/framework/gin"
 )
 
-func registerRouter(core *framework.Core) {
-	//core.Use(TimeoutHandler(2 * time.Second))
+func registerRouter(core *gin.Engine) {
 
-	//core.Use(RecoverHandler(), CalRequest())
-	//core.Use(RecoverHandler())
-	//
-	//core.Use(CalRequest())
-	core.Use(FuncHandler1(), FuncHandler2(), FuncHandler3())
-	core.Use(FuncHandler4(), FuncHandler5())
+	core.Use(FuncHandler1())
 
-	fmt.Println(core.GetMiddleWares())
 
 	//core.Get("/foo", FooControllerHandler)
-	core.Get("/login", UserLoginController)
+	core.GET("/login", UserLoginController)
 
 	// 单个url指定中间件, 中间件就是handler格式
 	//core.Get("/bar", BarController)
@@ -26,18 +18,16 @@ func registerRouter(core *framework.Core) {
 
 	subjectApi := core.Group("/subject")
 	{
-		subjectApi.Delete("/:id", SubjectDelController)
-		subjectApi.Put("/:id", SubjectUpdateController)
-		subjectApi.Get("/:id", SubjectGetController)
-		subjectApi.Get("/list/all", SubjectListController)
+		subjectApi.DELETE("/:id", SubjectDelController)
+		subjectApi.PUT("/:id", SubjectUpdateController)
+		subjectApi.GET("/:id", SubjectGetController)
+		subjectApi.GET("/list/all", SubjectListController)
 
 		subjectInnerApi := subjectApi.Group("/info")
 		{
-			subjectInnerApi.Get("/name", SubjectNameController)
+			subjectInnerApi.GET("/name", SubjectNameController)
 		}
 	}
 
 	//core.DisplayTree()
-
-
 }

@@ -2,21 +2,21 @@ package main
 
 import (
 	"context"
+	"github.com/wojh217/hade/framework/gin"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"webframework/framework"
 )
 
 
 func main() {
-	core := framework.NewCore()
-	registerRouter(core)
+	engine := gin.Default()
+	registerRouter(engine)
 
 	server := &http.Server{
-		Handler: core,
+		Handler: engine,
 		Addr:    ":8080",
 	}
 
@@ -33,3 +33,5 @@ func main() {
 	}
 
 }
+
+

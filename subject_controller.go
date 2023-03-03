@@ -2,37 +2,37 @@ package main
 
 import (
 	"fmt"
-	"webframework/framework"
+	"github.com/wojh217/hade/framework/gin"
 )
 
 // subject controller
-func SubjectAddController(c *framework.Context) error {
-	c.SetOkStatus().Json( "ok, SubjectAddController")
-	return nil
+func SubjectAddController(c *gin.Context) {
+	c.ISetOkStatus().IJson( "ok, SubjectAddController")
+	return
 }
 
-func SubjectListController(c *framework.Context) error {
-	c.SetOkStatus().Json( "ok, SubjectListController")
-	return nil
+func SubjectListController(c *gin.Context) {
+	c.ISetOkStatus().IJson( "ok, SubjectListController")
+	return
 }
 
-func SubjectDelController(c *framework.Context) error {
-	c.SetOkStatus().Json( "ok, SubjectDelController")
-	return nil
+func SubjectDelController(c *gin.Context) {
+	c.ISetOkStatus().IJson( "ok, SubjectDelController")
+	return
 }
 
-func SubjectUpdateController(c *framework.Context) error {
-	c.SetOkStatus().Json( "ok, SubjectUpdateController")
-	return nil
+func SubjectUpdateController(c *gin.Context) {
+	c.ISetOkStatus().IJson( "ok, SubjectUpdateController")
+	return
 }
 
-func SubjectGetController(c *framework.Context) error {
-	c.SetOkStatus().Json( "ok, SubjectGetController")
-	return nil
+func SubjectGetController(c *gin.Context) {
+	c.ISetOkStatus().IJson( "ok, SubjectGetController")
+	return
 }
 
-func SubjectNameController(c *framework.Context) error {
+func SubjectNameController(c *gin.Context) {
 	fmt.Println("ok, SubjectNameController")
-	c.SetOkStatus().Json( "ok, SubjectNameController")
-	return nil
+	c.ISetOkStatus().IJson( "ok, SubjectNameController")
+	return
 }

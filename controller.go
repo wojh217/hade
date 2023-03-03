@@ -3,65 +3,64 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"github.com/wojh217/hade/framework/gin"
 	"time"
-	"webframework/framework"
 )
 
 
 
-func FooControllerHandler(ctx *framework.Context) error {
-	finish := make(chan struct{}, 1)
-	panicChan := make(chan interface{}, 1)
+//func FooControllerHandler(ctx *framework.Context) error {
+//	finish := make(chan struct{}, 1)
+//	panicChan := make(chan interface{}, 1)
+//
+//	durationCtx, cancel := context.WithTimeout(ctx.BaseContext(), 1*time.Second)
+//	defer cancel()
+//
+//	go func() {
+//		defer func() {
+//			if p := recover(); p != nil {
+//				panicChan <- p
+//			}
+//		}()
+//
+//
+//		time.Sleep(10 * time.Second)
+//		ctx.SetStatus(200).Json( "ok")
+//		finish <- struct{}{}
+//	}()
+//
+//	select {
+//	case <-finish:
+//		fmt.Println("finish")
+//	case p := <-panicChan:
+//		ctx.WriterMux().Lock()
+//		defer ctx.WriterMux().Unlock()
+//		log.Println(p)
+//		ctx.SetStatus(500).Json( "panic")
+//	case <-durationCtx.Done():
+//		ctx.WriterMux().Lock()
+//		defer ctx.WriterMux().Unlock()
+//		ctx.SetStatus(500).Json( "time out")
+//		ctx.SetHasTimeout()
+//	}
+//
+//	return nil
+//}
 
-	durationCtx, cancel := context.WithTimeout(ctx.BaseContext(), 1*time.Second)
-	defer cancel()
 
-	go func() {
-		defer func() {
-			if p := recover(); p != nil {
-				panicChan <- p
-			}
-		}()
-
-
-		time.Sleep(10 * time.Second)
-		ctx.SetStatus(200).Json( "ok")
-		finish <- struct{}{}
-	}()
-
-	select {
-	case <-finish:
-		fmt.Println("finish")
-	case p := <-panicChan:
-		ctx.WriterMux().Lock()
-		defer ctx.WriterMux().Unlock()
-		log.Println(p)
-		ctx.SetStatus(500).Json( "panic")
-	case <-durationCtx.Done():
-		ctx.WriterMux().Lock()
-		defer ctx.WriterMux().Unlock()
-		ctx.SetStatus(500).Json( "time out")
-		ctx.SetHasTimeout()
-	}
-
-	return nil
-}
-
-
-func PanicController(c *framework.Context) error {
+func PanicController(c *gin.Context) error {
 	ch := make(chan int)
 	close(ch)
 	ch <- 1
 
-	c.SetStatus(200).Json( "ok, PanicController")
+	c.ISetStatus(200).IJson( "ok, PanicController")
 	return nil
 }
 
 
 
-func BarController(c *framework.Context) error {
-	c.SetStatus(200).Json( "ok, BarController")
+func BarController(c *gin.Context) error {
+	c.ISetStatus(200).IJson( "ok, BarController")
 	return nil
 }
 
@@ -69,100 +68,66 @@ func BarController(c *framework.Context) error {
 
 // 自定义中间件
 // 超时中间件， 接收一个时间参数，返回handler
-func TimeoutHandler(d time.Duration) framework.ControllerHandler {
-	return func(c *framework.Context) error {
+func TimeoutHandler(d time.Duration) gin.HandlerFunc {
+	return func(c *gin.Context)  {
 		fmt.Printf("time.Duration: %d\n", d)
 
-		durationCtx, cancel := context.WithTimeout(c.BaseContext(), d)
+		durationCtx, cancel := context.WithTimeout(c, d)
 		defer cancel()
 
-		c.GetRequest().WithContext(durationCtx)
-		finish := make(chan error)
+		c.Request.WithContext(durationCtx)
+		finish := make(chan bool)
 
 		go func() {
-			finish <- c.Next()
+			// 真正的操作
+			c.Next()
+
+			finish <- true
 		}()
 
 		select {
-		case err := <- finish:
-			return err
+		case <- finish:
 		case <- durationCtx.Done():
-			c.WriterMux().Lock()
-			defer c.WriterMux().Unlock()
-			c.SetStatus(500).Json( "time out")
-			c.SetHasTimeout()
-			return nil
+			c.ISetStatus(500).IJson( "time out")
 		}
 	}
 }
 
 
-
-func RecoverHandler() framework.ControllerHandler {
-	return func(c *framework.Context) error {
+// RecoverHandler
+func RecoverHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		defer func() {
 			if p := recover(); p != nil {
 				fmt.Printf("catch panic: %v\n", p)
-				c.SetStatus(500).Json( fmt.Sprintf("catch panic: %v", p)) // 这里直接回复报错
+				//c.SetStatus(500).Json( fmt.Sprintf("catch panic: %v", p)) // 这里直接回复报错
 			}
 		}()
 
 		// 调用的途中遇到了panic
-		return c.Next()
+		c.Next()
 	}
 }
 
-func FuncHandler1() framework.ControllerHandler {
-	return func(c *framework.Context) error {
+func FuncHandler1() gin.HandlerFunc {
+	return func(c *gin.Context)  {
 		fmt.Println("FuncHandler1")
 
-		return c.Next()
+		// 没有返回值
+		c.Next()
 	}
 }
 
-func FuncHandler2() framework.ControllerHandler {
-	return func(c *framework.Context) error {
-		fmt.Println("FuncHandler2")
 
-		//ch := make(chan bool)
-		//close(ch)
-		//
-		//ch <- true
-		return c.Next()
-	}
-}
-
-func FuncHandler3() framework.ControllerHandler {
-	return func(c *framework.Context) error {
-		fmt.Println("FuncHandler3")
-
-		return c.Next()
-	}
-}
-func FuncHandler4() framework.ControllerHandler {
-	return func(c *framework.Context) error {
-		fmt.Println("FuncHandler4")
-
-		return c.Next()
-	}
-}
-func FuncHandler5() framework.ControllerHandler {
-	return func(c *framework.Context) error {
-		fmt.Println("FuncHandler5")
-
-		return c.Next()
-	}
-}
 
 // 统计请求的中间件
-func CalRequest() framework.ControllerHandler {
-	return func(c *framework.Context) error {
+func CalRequest() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		begintime := time.Now()
 		defer func() {
-			fmt.Printf("request uri: %s, begintime: %s, endtime: %s, cost: %v\n", c.GetRequest().URL, begintime, time.Now(), time.Now().Sub(begintime))
+			fmt.Printf("request uri: %s, begintime: %s, endtime: %s, cost: %v\n", c.Request.URL, begintime, time.Now(), time.Now().Sub(begintime))
 		}()
-
-		return c.Next()
+		c.Next()
 	}
 }
 
