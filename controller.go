@@ -58,8 +58,23 @@ func FooControllerHandler(ctx *framework.Context) error {
 }
 
 
+func PanicController(c *framework.Context) error {
+	ch := make(chan int)
+	close(ch)
+	ch <- 1
+
+	c.Json(200, "ok, PanicController")
+	return nil
+}
+
 func UserLoginController(c *framework.Context) error {
+	fmt.Println("ok, UserLoginController")
 	c.Json(200, "ok, UserLoginController")
+	return nil
+}
+
+func BarController(c *framework.Context) error {
+	c.Json(200, "ok, BarController")
 	return nil
 }
 
@@ -90,6 +105,116 @@ func SubjectGetController(c *framework.Context) error {
 }
 
 func SubjectNameController(c *framework.Context) error {
+	fmt.Println("ok, SubjectNameController")
 	c.Json(200, "ok, SubjectNameController")
 	return nil
 }
+
+// 自定义中间件
+// 超时中间件， 接收一个时间参数，返回handler
+func TimeoutHandler(d time.Duration) framework.ControllerHandler {
+	return func(c *framework.Context) error {
+		fmt.Printf("time.Duration: %d\n", d)
+
+		durationCtx, cancel := context.WithTimeout(c.BaseContext(), d)
+		defer cancel()
+
+		c.GetRequest().WithContext(durationCtx)
+		finish := make(chan error)
+
+		go func() {
+			finish <- c.Next()
+		}()
+
+		select {
+		case err := <- finish:
+			return err
+		case <- durationCtx.Done():
+			c.WriterMux().Lock()
+			defer c.WriterMux().Unlock()
+			c.Json(500, "time out")
+			c.SetHasTimeout()
+			return nil
+		}
+	}
+}
+
+func NewTimeoutHandler(fn framework.ControllerHandler, d time.Duration) framework.ControllerHandler {
+	return func(c *framework.Context) error {
+
+		c.GetRequest().WithContext()
+		go func() {
+			fn(c)
+		}()
+	}
+
+}
+
+func RecoverHandler() framework.ControllerHandler {
+	return func(c *framework.Context) error {
+		defer func() {
+			if p := recover(); p != nil {
+				fmt.Printf("catch panic: %v\n", p)
+				c.Json(500, fmt.Sprintf("catch panic: %v", p)) // 这里直接回复报错
+			}
+		}()
+
+		// 调用的途中遇到了panic
+		return c.Next()
+	}
+}
+
+func FuncHandler1() framework.ControllerHandler {
+	return func(c *framework.Context) error {
+		fmt.Println("FuncHandler1")
+
+		return c.Next()
+	}
+}
+
+func FuncHandler2() framework.ControllerHandler {
+	return func(c *framework.Context) error {
+		fmt.Println("FuncHandler2")
+
+		//ch := make(chan bool)
+		//close(ch)
+		//
+		//ch <- true
+		return c.Next()
+	}
+}
+
+func FuncHandler3() framework.ControllerHandler {
+	return func(c *framework.Context) error {
+		fmt.Println("FuncHandler3")
+
+		return c.Next()
+	}
+}
+func FuncHandler4() framework.ControllerHandler {
+	return func(c *framework.Context) error {
+		fmt.Println("FuncHandler4")
+
+		return c.Next()
+	}
+}
+func FuncHandler5() framework.ControllerHandler {
+	return func(c *framework.Context) error {
+		fmt.Println("FuncHandler5")
+
+		return c.Next()
+	}
+}
+
+// 统计请求的中间件
+func CalRequest() framework.ControllerHandler {
+	return func(c *framework.Context) error {
+		begintime := time.Now()
+		defer func() {
+			fmt.Printf("request uri: %s, begintime: %s, endtime: %s, cost: %v\n", c.GetRequest().URL, begintime, time.Now(), time.Now().Sub(begintime))
+		}()
+
+		return c.Next()
+	}
+}
+

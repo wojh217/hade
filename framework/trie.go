@@ -1,7 +1,6 @@
 package framework
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -13,7 +12,7 @@ type Tree struct {
 type node struct {
 	isLast bool    // 是否是代表一个完整路由的节点 比如路径里的中间节点就不是完整节点
 	segment string
-	handler ControllerHandler
+	handlers []ControllerHandler // 一个handler数组，中间件也是handler
 	childs []*node
 }
 
@@ -21,7 +20,7 @@ func NewNode() *node {
 	return &node{
 		isLast: false,
 		segment: "",
-		handler: nil,
+		handlers: []ControllerHandler{},
 		childs: []*node{},
 	}
 }
@@ -90,6 +89,7 @@ func (n *node) matchNode(uri string) *node {
 			// 用isLast判断是否是代表路径的节点， 因为可能存在/user/:id 和/user/name/zhang这种情况，那么:id和name是存在一个节点上的
 			//
 			if tn.isLast {
+				fmt.Printf("is last: %p\n", tn)
 				return tn
 			}
 		}
@@ -100,6 +100,7 @@ func (n *node) matchNode(uri string) *node {
 	for _, tn := range cnodes {
 		tnMatch := tn.matchNode(segments[1])
 		if tnMatch != nil {
+			fmt.Printf("tnMatch != nil: %p\n", tnMatch)
 			return tnMatch
 		}
 	}
@@ -116,36 +117,40 @@ AddRouter
 /:user/name
 /:user/name/:age(冲突)
 */
-func (tree *Tree) AddRouter(uri string, handler ControllerHandler) error {
+func (tree *Tree) AddRouter(uri string, handlers []ControllerHandler) error {
+	fmt.Printf("AddRouter url: %s, handlers: %p\n", uri, handlers)
+
 	n := tree.root
 	// 如果发现uri已经存在于树形结构中，则返回报错
-	if n.matchNode(uri) != nil {
-		return errors.New("route exists: " + uri)
-	}
+	//if n.matchNode(uri) != nil {
+	//	return errors.New("route exists: " + uri)
+	//}
 
 	segments := strings.Split(uri, "/")
 	for idx, segment := range segments {
 		isLast := idx == len(segments) - 1
 		var objNode *node
 
-		childNodes := n.filterChildNodes(segment)
-		// 匹配上了，但名字完全一样才算真的拥有此segment的节点
-		if len(childNodes) > 0 {
-			for _, cnode := range childNodes {
-				if cnode.segment == segment {
-					objNode = cnode
-					break
-				}
-			}
-		}
+		//childNodes := n.filterChildNodes(segment)
+		//// 匹配上了，但名字完全一样才算真的拥有此segment的节点
+		//if len(childNodes) > 0 {
+		//	for _, cnode := range childNodes {
+		//		if cnode.segment == segment {
+		//			objNode = cnode
+		//			break
+		//		}
+		//	}
+		//}
 
-		// 创建新节点
+		// 创建新的子节点
 		if objNode == nil {
 			cnode := NewNode()
 			cnode.segment = segment
 			if isLast {
-				cnode.isLast = isLast // 这里用true吗？
-				cnode.handler = handler
+				cnode.isLast = true
+				cnode.handlers = handlers
+
+				fmt.Printf("cnode: %p, segment: %s, handlers: %p\n", cnode, segment, handlers)
 			}
 			n.childs = append(n.childs, cnode)
 			objNode = cnode
@@ -153,13 +158,16 @@ func (tree *Tree) AddRouter(uri string, handler ControllerHandler) error {
 		n = objNode
 	}
 
+	fmt.Println("")
+
 	return nil
 }
 
-func (tree *Tree) FindHandler(uri string) ControllerHandler {
+func (tree *Tree) FindHandlers(uri string) []ControllerHandler {
+	fmt.Printf("uri: %s\n", uri)
 	matchNode := tree.root.matchNode(uri)
 	if matchNode == nil {
 		return nil
 	}
-	return matchNode.handler
+	return matchNode.handlers
 }

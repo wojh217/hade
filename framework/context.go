@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -17,6 +18,8 @@ type Context struct {
 	responseWriter http.ResponseWriter
 	ctx            context.Context
 
+	handlers       []ControllerHandler
+	idx int
 	// 是否超时标记位
 	hasTimeout bool
 	// 写保护机制
@@ -28,6 +31,8 @@ func NewContext(r *http.Request, w http.ResponseWriter) *Context {
 		request:        r,
 		responseWriter: w,
 		ctx:            r.Context(),
+		handlers:       nil,
+		idx: -1,
 		writerMux:      &sync.Mutex{},
 	}
 }
@@ -52,6 +57,21 @@ func (ctx *Context) SetHasTimeout() {
 
 func (ctx *Context) HasTimeout() bool {
 	return ctx.hasTimeout
+
+}
+func (ctx *Context) SetHandlers(handlers []ControllerHandler) {
+	ctx.handlers = handlers
+}
+
+func (ctx *Context) Next() error {
+	// 先加一，后调用
+	ctx.idx += 1
+	if ctx.idx <= len(ctx.handlers) - 1 {
+		handler := ctx.handlers[ctx.idx]
+		return handler(ctx)
+	}
+	return nil
+
 }
 
 // #endregion
@@ -193,6 +213,7 @@ func (ctx *Context) BindJson(obj interface{}) error {
 
 func (ctx *Context) Json(status int, obj interface{}) error {
 	if ctx.HasTimeout() {
+		fmt.Println("has timeout")
 		return nil
 	}
 	ctx.responseWriter.Header().Set("Content-Type", "application/json")
@@ -215,3 +236,5 @@ func (ctx *Context) Text(status int, obj string) error {
 }
 
 // #endregion
+
+
