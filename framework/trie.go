@@ -14,6 +14,7 @@ type node struct {
 	segment string
 	handlers []ControllerHandler // 一个handler数组，中间件也是handler
 	childs []*node
+	parent *node
 }
 
 func NewNode() *node {
@@ -89,7 +90,6 @@ func (n *node) matchNode(uri string) *node {
 			// 用isLast判断是否是代表路径的节点， 因为可能存在/user/:id 和/user/name/zhang这种情况，那么:id和name是存在一个节点上的
 			//
 			if tn.isLast {
-				fmt.Printf("is last: %p\n", tn)
 				return tn
 			}
 		}
@@ -118,7 +118,6 @@ AddRouter
 /:user/name/:age(冲突)
 */
 func (tree *Tree) AddRouter(uri string, handlers []ControllerHandler) error {
-	fmt.Printf("AddRouter url: %s, handlers: %p\n", uri, handlers)
 
 	n := tree.root
 	// 如果发现uri已经存在于树形结构中，则返回报错
@@ -150,24 +149,42 @@ func (tree *Tree) AddRouter(uri string, handlers []ControllerHandler) error {
 				cnode.isLast = true
 				cnode.handlers = handlers
 
-				fmt.Printf("cnode: %p, segment: %s, handlers: %p\n", cnode, segment, handlers)
 			}
+			cnode.parent = n
 			n.childs = append(n.childs, cnode)
 			objNode = cnode
 		}
 		n = objNode
 	}
 
-	fmt.Println("")
 
 	return nil
 }
 
 func (tree *Tree) FindHandlers(uri string) []ControllerHandler {
-	fmt.Printf("uri: %s\n", uri)
 	matchNode := tree.root.matchNode(uri)
 	if matchNode == nil {
 		return nil
 	}
 	return matchNode.handlers
+}
+
+// n为uri路径匹配的节点，
+// uri包含路由参数 如/books/:id   /user/:name/list
+func (n *node) parseParamsFromEndNode(uri string) map[string]string {
+	result := make(map[string]string)
+	segments := strings.Split(uri, "/")
+	cnode := n
+	// 从后往前找父节点
+	for i := len(segments)-1; i >= 0; i-- {
+		if cnode.segment == "" {
+			break
+		}
+		if isWildSegment(cnode.segment) {
+			// key为去掉冒号后的字符串
+			result[cnode.segment[1:]] = segments[i]
+		}
+		cnode = cnode.parent
+	}
+	return result
 }

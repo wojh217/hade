@@ -2,12 +2,11 @@ package main
 
 import (
 	"fmt"
-	"time"
 	"webframework/framework"
 )
 
 func registerRouter(core *framework.Core) {
-	core.Use(TimeoutHandler(2 * time.Second))
+	//core.Use(TimeoutHandler(2 * time.Second))
 
 	//core.Use(RecoverHandler(), CalRequest())
 	//core.Use(RecoverHandler())
@@ -27,10 +26,10 @@ func registerRouter(core *framework.Core) {
 
 	subjectApi := core.Group("/subject")
 	{
-		//subjectApi.Delete("/:id", SubjectDelController)
-		//subjectApi.Put("/:id", SubjectUpdateController)
-		//subjectApi.Get("/:id", SubjectGetController)
-		//subjectApi.Get("/list/all", SubjectListController)
+		subjectApi.Delete("/:id", SubjectDelController)
+		subjectApi.Put("/:id", SubjectUpdateController)
+		subjectApi.Get("/:id", SubjectGetController)
+		subjectApi.Get("/list/all", SubjectListController)
 
 		subjectInnerApi := subjectApi.Group("/info")
 		{
@@ -38,7 +37,7 @@ func registerRouter(core *framework.Core) {
 		}
 	}
 
-	core.DisplayTree()
+	//core.DisplayTree()
 
 
 }

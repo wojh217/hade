@@ -88,27 +88,32 @@ func (c *Core) FindRouteByRequest(request *http.Request) []ControllerHandler {
 	return nil
 }
 
+func (c *Core) FindRouteNodeByRequest(request *http.Request) *node {
+	uri := request.URL.Path
+	method := request.Method
+	upperMethod := strings.ToUpper(method)
+
+	if methodHandlers, ok := c.router[upperMethod]; ok {
+		return methodHandlers.root.matchNode(uri)
+	}
+	return nil
+}
+
 // ServeHTTP 会多线程并发访问, 要考虑并发处理是否会产生竞争
 func (c *Core) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := NewContext(r, w)
-	handlers := c.FindRouteByRequest(r)   //
-	if handlers == nil || len(handlers) == 0 {
-		ctx.Json(404, "not found")
+	cnode := c.FindRouteNodeByRequest(r)   //
+	if cnode == nil {
+		ctx.SetStatus(404).Json("not found")
 		return
 	}
-
-	// 之前handler只写到core中，现在因为中间件只接收ctx参数，因此也要写入ctx中
-	//all_handlers := make([]ControllerHandler, len(c.middlewares) + len(handlers))
-	//copy(all_handlers, c.middlewares)
-	//copy(all_handlers[len(c.middlewares):], handlers)
-	//ctx.SetHandlers(all_handlers)
-
-	fmt.Printf("handlers: %v\n", handlers)
-	ctx.SetHandlers(handlers)
+	ctx.SetHandlers(cnode.handlers)
+	params := cnode.parseParamsFromEndNode(r.URL.Path)
+	ctx.SetParams(params)
 
 	// 这里使用ctx.Next()函数，内部按顺序逐个调用handler链表
 	if err := ctx.Next(); err != nil {
-		ctx.Json(500, "inner error")
+		ctx.SetStatus(500).Json("inner error")
 		return
 	}
 }

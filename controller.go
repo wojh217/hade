@@ -4,20 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 	"webframework/framework"
 )
 
-func Foo2(ctx *framework.Context) error {
-	obj := map[string]interface{}{
-		"data": nil,
-	}
-	fooInt := ctx.FormInt("foo", 10)
-	obj["data"] = fooInt
-	return ctx.Json(http.StatusOK, obj)
 
-}
 
 func FooControllerHandler(ctx *framework.Context) error {
 	finish := make(chan struct{}, 1)
@@ -35,7 +26,7 @@ func FooControllerHandler(ctx *framework.Context) error {
 
 
 		time.Sleep(10 * time.Second)
-		ctx.Json(200, "ok")
+		ctx.SetStatus(200).Json( "ok")
 		finish <- struct{}{}
 	}()
 
@@ -46,11 +37,11 @@ func FooControllerHandler(ctx *framework.Context) error {
 		ctx.WriterMux().Lock()
 		defer ctx.WriterMux().Unlock()
 		log.Println(p)
-		ctx.Json(500, "panic")
+		ctx.SetStatus(500).Json( "panic")
 	case <-durationCtx.Done():
 		ctx.WriterMux().Lock()
 		defer ctx.WriterMux().Unlock()
-		ctx.Json(500, "time out")
+		ctx.SetStatus(500).Json( "time out")
 		ctx.SetHasTimeout()
 	}
 
@@ -63,52 +54,18 @@ func PanicController(c *framework.Context) error {
 	close(ch)
 	ch <- 1
 
-	c.Json(200, "ok, PanicController")
+	c.SetStatus(200).Json( "ok, PanicController")
 	return nil
 }
 
-func UserLoginController(c *framework.Context) error {
-	fmt.Println("ok, UserLoginController")
-	c.Json(200, "ok, UserLoginController")
-	return nil
-}
+
 
 func BarController(c *framework.Context) error {
-	c.Json(200, "ok, BarController")
+	c.SetStatus(200).Json( "ok, BarController")
 	return nil
 }
 
-// subject controller
-func SubjectAddController(c *framework.Context) error {
-	c.Json(200, "ok, SubjectAddController")
-	return nil
-}
 
-func SubjectListController(c *framework.Context) error {
-	c.Json(200, "ok, SubjectListController")
-	return nil
-}
-
-func SubjectDelController(c *framework.Context) error {
-	c.Json(200, "ok, SubjectDelController")
-	return nil
-}
-
-func SubjectUpdateController(c *framework.Context) error {
-	c.Json(200, "ok, SubjectUpdateController")
-	return nil
-}
-
-func SubjectGetController(c *framework.Context) error {
-	c.Json(200, "ok, SubjectGetController")
-	return nil
-}
-
-func SubjectNameController(c *framework.Context) error {
-	fmt.Println("ok, SubjectNameController")
-	c.Json(200, "ok, SubjectNameController")
-	return nil
-}
 
 // 自定义中间件
 // 超时中间件， 接收一个时间参数，返回handler
@@ -132,30 +89,21 @@ func TimeoutHandler(d time.Duration) framework.ControllerHandler {
 		case <- durationCtx.Done():
 			c.WriterMux().Lock()
 			defer c.WriterMux().Unlock()
-			c.Json(500, "time out")
+			c.SetStatus(500).Json( "time out")
 			c.SetHasTimeout()
 			return nil
 		}
 	}
 }
 
-func NewTimeoutHandler(fn framework.ControllerHandler, d time.Duration) framework.ControllerHandler {
-	return func(c *framework.Context) error {
 
-		c.GetRequest().WithContext()
-		go func() {
-			fn(c)
-		}()
-	}
-
-}
 
 func RecoverHandler() framework.ControllerHandler {
 	return func(c *framework.Context) error {
 		defer func() {
 			if p := recover(); p != nil {
 				fmt.Printf("catch panic: %v\n", p)
-				c.Json(500, fmt.Sprintf("catch panic: %v", p)) // 这里直接回复报错
+				c.SetStatus(500).Json( fmt.Sprintf("catch panic: %v", p)) // 这里直接回复报错
 			}
 		}()
 
