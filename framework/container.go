@@ -36,6 +36,25 @@ type HadeContainer struct {
 	lock sync.RWMutex
 }
 
+func NewHadeContainer() *HadeContainer {
+	return &HadeContainer{
+		providers: make(map[string]ServiceProvider),
+		instances: make(map[string]interface{}),
+	}
+}
+
+// PrintProviders 输出服务容器中注册的关键字
+func (hade *HadeContainer) PrintProviders() []string {
+	ret := []string{}
+	for _, provider := range hade.providers {
+		name := provider.Name()
+
+		line := fmt.Sprint(name)
+		ret = append(ret, line)
+	}
+	return ret
+}
+
 func (h *HadeContainer) Bind(provider ServiceProvider) error {
 	h.lock.Lock()
 	defer h.lock.Unlock()
@@ -84,6 +103,23 @@ func (h *HadeContainer) MakeNew(key string, params []interface{}) (interface{}, 
 	return h.make(key, params, true)
 }
 
+func (h *HadeContainer) newInstance(provider ServiceProvider, params []interface{}) (interface{}, error) {
+	if err := provider.Boot(h); err != nil {
+		return nil, err
+	}
+
+	// 如果不传参数，使用默认参数
+	if params == nil {
+		params = provider.Params(h)
+	}
+	fn := provider.Register(h)
+	instance, err := fn(params...)
+	if err != nil {
+		return nil, err
+	}
+	return instance, nil
+}
+
 func (h *HadeContainer) make(key string, params []interface{}, forceNew bool) (interface{}, error) {
 	h.lock.RLock()
 	defer h.lock.RUnlock()
@@ -110,27 +146,6 @@ func (h *HadeContainer) make(key string, params []interface{}, forceNew bool) (i
 	return inst, nil
 }
 
-func (h *HadeContainer) newInstance(provider ServiceProvider, params []interface{}) (interface{}, error) {
-	if err := provider.Boot(h); err != nil {
-		return nil, err
-	}
-
-	// 如果不传参数，使用默认参数
-	if params == nil {
-		params = provider.Params(h)
-	}
-	fn := provider.Register(h)
-	instance, err := fn(params...)
-	if err != nil {
-		return nil, err
-	}
-	return instance, nil
-}
 
 
-func NewHadeContainer() Container {
-	return &HadeContainer{
-		providers: make(map[string]ServiceProvider),
-		instances: make(map[string]interface{}),
-	}
-}
+
