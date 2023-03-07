@@ -1,47 +1,30 @@
 package main
 
 import (
-	"context"
+	"github.com/wojh217/hade/app/console"
 	hadhttp "github.com/wojh217/hade/app/http"
-	"github.com/wojh217/hade/app/provider/demo"
-	"github.com/wojh217/hade/framework/gin"
-	"github.com/wojh217/hade/framework/middleware"
+	"github.com/wojh217/hade/framework"
 	"github.com/wojh217/hade/framework/provider/app"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
+	"github.com/wojh217/hade/framework/provider/kernel"
 )
 
 func main() {
-	core := gin.New()
+	// container位于最外层，暴露出来
+	// gin的engine、cmd的rootCmd中保存有container
+	container := framework.NewHadeContainer()
 
-	// 注册两个provider
-	core.Bind(&app.HadeAppProvider{BaseFolder: "/tmp"})
-	core.Bind(&demo.DemoProvider{})
+	// HadeAppProvider属于是框架提供的provider，
+	// 其实例本身有Version()、XXXDIr()方法
+	container.Bind(&app.HadeAppProvider{BaseFolder: "/tmp"})
 
-	// 使用middlerware
-	core.Use(gin.Recovery())
-	core.Use(middleware.Cost())
 
-	hadhttp.Routes(core)
-
-	server := &http.Server{
-		Handler: core,
-		Addr:    ":8080",
+	if engine, err := hadhttp.NewHttpEngine(container); err == nil {
+		// HadeKernelProvider属于应用提供的provider，
+		// 其实例具有HttpEngine()方法
+		container.Bind(&kernel.HadeKernelProvider{HttpEngine: engine})
 	}
 
-	go func() {
-		server.ListenAndServe()
-	}()
-
-	quit := make(chan os.Signal)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	<-quit
-
-	if err := server.Shutdown(context.Background()); err != nil {
-		log.Fatal("server shutdown: ", err)
-	}
+	// 应用程序提供的命令行
+	console.RunCommand(container)
 
 }

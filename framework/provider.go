@@ -2,6 +2,7 @@ package framework
 
 type NewInstance func(...interface{}) (interface{}, error)
 
+
 type ServiceProvider interface {
 	// Register 在容器中注册了一个实例化服务的方法，是否在注册时就实例化参考IsDefer接口
 	Register(Container) NewInstance

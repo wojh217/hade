@@ -18,8 +18,7 @@ func Timeout(d time.Duration) gin.HandlerFunc {
 		finish := make(chan struct{}, 1)
 		panicChan := make(chan interface{}, 1)
 		// 执行业务逻辑前预操作：初始化超时context
-		//durationCtx, cancel := context.WithTimeout(c.BaseContext(), d)
-		durationCtx, cancel := context.WithTimeout(c, d)
+		durationCtx, cancel := context.WithTimeout(c.BaseContext(), d)
 		defer cancel()
 
 		go func() {
